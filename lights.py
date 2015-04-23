@@ -26,7 +26,7 @@ parser.add_argument("-c", "--color", help="the color", type=str)
 parser.add_argument("-s", "--saturation", help="the saturation", type=int)
 parser.add_argument("-b", "--brightness", help="the brightness", type=int)
 parser.add_argument("-l", "--lights", help="the lights", default="1,2")
-parser.add_argument("-t", "--time", help="transition time in 100ms", default=4, type=int)
+parser.add_argument("-t", "--time", help="transition time in seconds", default=0.4, type=float)
 parser.add_argument("-o", "--off", help="turn off", action="store_true")
 args = parser.parse_args()
 
@@ -49,4 +49,4 @@ if args.brightness is not None:
 
 package['on'] = not args.off
 
-bridge.set_light([int(x) for x in args.lights.split(',')], package, transitiontime=args.time)
+bridge.set_light([int(x) for x in args.lights.split(',')], package, transitiontime=args.time*10)
