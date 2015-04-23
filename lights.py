@@ -21,8 +21,9 @@ HUES = {
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--color", help="red, orange, yellow, lime, green, seafoam, cyan, sky, blue, purple, magenta, pink", type=str)
-parser.add_argument("-u", "--hue", help="0 - 360", type=int)
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-c", "--color", choices=list(HUES))
+group.add_argument("-u", "--hue", help="0 - 360", type=int)
 parser.add_argument("-s", "--saturation", help="0 - 100", type=int)
 parser.add_argument("-b", "--brightness", help="0 - 100", type=int)
 parser.add_argument("-l", "--lights", help="comma-separated light indices", default="1,2")
