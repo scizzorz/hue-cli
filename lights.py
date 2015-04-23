@@ -30,6 +30,8 @@ else:
 		'rooms': {'default': [1]},
 	}
 
+# default command
+
 def main(args):
 	bridge = phue.Bridge('192.168.1.113')
 	bridge.connect()
@@ -56,17 +58,22 @@ def main(args):
 
 	bridge.set_light(lights, package, transitiontime=args.time*10)
 
-def add_room(args):
-	config['rooms'][args.name] = [int(x) for x in args.lights.split(',')]
+# rooms subcommand
 
-def rm_room(args):
-	del config['rooms'][args.name]
-
-def list_rooms(args):
+def room(args):
 	print(config['rooms'])
 
+def room_set(args):
+	config['rooms'][args.name] = [int(x) for x in args.lights.split(',')]
+
+def room_rm(args):
+	del config['rooms'][args.name]
+
+# main parser
+
 parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers()
+parser.set_defaults(func=main)
+subs = parser.add_subparsers()
 
 color_group = parser.add_mutually_exclusive_group()
 color_group.add_argument('-c', '--color', choices=list(HUES))
@@ -82,19 +89,18 @@ lights_group.add_argument('-r', '--room', choices=list(config['rooms']), default
 parser.add_argument('-t', '--time', help='transition time in seconds', default=0.4, type=float)
 parser.add_argument('-o', '--off', help='turn off lights', action='store_true')
 
-parser.set_defaults(func=main)
+room_parser = subs.add_parser('room', help='manage rooms')
+room_parser.set_defaults(func=room)
+room_subs = room_parser.add_subparsers()
 
-add_room_parser = subparsers.add_parser('add-room', help='make a new room')
-add_room_parser.add_argument('name', type=str)
-add_room_parser.add_argument('lights')
-add_room_parser.set_defaults(func=add_room)
+room_set_parser = room_subs.add_parser('set', help='add or update a room')
+room_set_parser.add_argument('name', type=str)
+room_set_parser.add_argument('lights')
+room_set_parser.set_defaults(func=room_set)
 
-rm_room_parser = subparsers.add_parser('rm-room', help='remove a room')
-rm_room_parser.add_argument('name', type=str)
-rm_room_parser.set_defaults(func=rm_room)
-
-list_room_parser = subparsers.add_parser('list-rooms', help='list all rooms')
-list_room_parser.set_defaults(func=list_rooms)
+room_rm_parser = room_subs.add_parser('rm', help='remove a room')
+room_rm_parser.add_argument('name', choices=list(config['rooms']))
+room_rm_parser.set_defaults(func=room_rm)
 
 args = parser.parse_args()
 
