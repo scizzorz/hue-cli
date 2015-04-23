@@ -21,13 +21,13 @@ HUES = {
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-u", "--hue", help="the hue", type=int)
-parser.add_argument("-c", "--color", help="the color", type=str)
-parser.add_argument("-s", "--saturation", help="the saturation", type=int)
-parser.add_argument("-b", "--brightness", help="the brightness", type=int)
-parser.add_argument("-l", "--lights", help="the lights", default="1,2")
+parser.add_argument("-c", "--color", help="red, orange, yellow, lime, green, seafoam, cyan, sky, blue, purple, magenta, pink", type=str)
+parser.add_argument("-u", "--hue", help="0 - 360", type=int)
+parser.add_argument("-s", "--saturation", help="0 - 100", type=int)
+parser.add_argument("-b", "--brightness", help="0 - 100", type=int)
+parser.add_argument("-l", "--lights", help="comma-separated light indices", default="1,2")
 parser.add_argument("-t", "--time", help="transition time in seconds", default=0.4, type=float)
-parser.add_argument("-o", "--off", help="turn off", action="store_true")
+parser.add_argument("-o", "--off", help="turn off lights", action="store_true")
 args = parser.parse_args()
 
 bridge = phue.Bridge('192.168.1.113')
