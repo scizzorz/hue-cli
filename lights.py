@@ -18,13 +18,13 @@ bridge.connect()
 package = {}
 
 if args.hue is not None:
-	package['hue'] = args.hue
+	package['hue'] = int(args.hue * 65535 / 360)
 
 if args.saturation is not None:
-	package['sat'] = args.saturation
+	package['sat'] = int(args.saturation * 254 / 100)
 
 if args.brightness is not None:
-	package['bri'] = args.brightness
+	package['bri'] = int(args.brightness * 254 / 100)
 
 package['on'] = not args.off
 
