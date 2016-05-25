@@ -4,70 +4,120 @@ import argparse
 import json
 import os
 import phue
+import re
+
+CHARS = re.compile('[^a-z ]')
 
 HUES = {
-	'red': 0,
-	'orange': 30,
-	'yellow': 60,
-	'lime': 90,
-	'green': 120,
-	'seafoam': 150,
-	'foam': 150,
-	'cyan': 180,
-	'sky': 210,
-	'blue': 240,
-	'purple': 270,
-	'magenta': 300,
-	'pink': 330,
+  'red': 0,
+  'orange': 30,
+  'yellow': 60,
+  'lime': 90,
+  'green': 120,
+  'seafoam': 150,
+  'foam': 150,
+  'cyan': 180,
+  'sky': 210,
+  'blue': 240,
+  'purple': 270,
+  'magenta': 300,
+  'pink': 330,
 }
 
 RCFILE = os.path.expanduser('~/.huerc')
 
 if os.path.isfile(RCFILE):
-	config = json.load(open(RCFILE))
+  config = json.load(open(RCFILE))
 else:
-	config = {
-		'rooms': {'default': [1]},
-	}
+  config = {
+    'default': '1',
+  }
+
+# look up a light by index or fuzzy name
+# return the phue.Light object
+
+def find_light(bridge, idx):
+  lights = bridge.get_light_objects('id')
+  try:
+    return lights[int(idx)]
+  except:
+    pass
+
+  idx = CHARS.sub('', idx.lower())
+  for i, obj in lights.items():
+    name = CHARS.sub('', obj.name.lower())
+    if idx in name:
+      return obj
+
+  raise Exception('Unknown light: {}'.format(idx))
+
+# look up a group by index or fuzzy name
+# return the index
+
+def find_group(bridge, idx):
+  groups = bridge.get_group()
+
+  if idx in groups:
+    return int(idx)
+
+  idx = CHARS.sub('', idx.lower())
+  for i, obj in groups.items():
+    name = CHARS.sub('', obj['name'].lower())
+    if idx in name:
+      return int(i)
+
+  raise Exception('Unknown group: {}'.format(idx))
 
 # default command
 
 def main(args):
-	bridge = phue.Bridge('192.168.1.113')
-	bridge.connect()
+  bridge = phue.Bridge('192.168.0.101')
+  bridge.connect()
 
-	package = {}
+  package = {}
 
-	if args.color is not None:
-		args.hue = HUES[args.color]
+  if args.color is not None:
+    args.hue = HUES[args.color]
 
-	if args.hue is not None:
-		package['hue'] = int(args.hue * 65535 / 360)
+  if args.hue is not None:
+    package['hue'] = int(args.hue * 65535 / 360)
 
-	if args.saturation is not None:
-		package['sat'] = int(args.saturation * 254 / 100)
+  if args.saturation is not None:
+    package['sat'] = int(args.saturation * 254 / 100)
 
-	if args.brightness is not None:
-		package['bri'] = int(args.brightness * 254 / 100)
+  if args.brightness is not None:
+    package['bri'] = int(args.brightness * 254 / 100)
 
-	lights = config['rooms'][args.room]
-	if args.lights is not None:
-		lights = [int(x) for x in args.lights.split(',')]
+  if args.dim:
+    package['bri'] = 0
 
-	package['on'] = not args.off
+  package['on'] = not args.off
 
-	bridge.set_light(lights, package, transitiontime=args.time*10)
+  if args.group:
+    group = find_group(bridge, args.group)
+    bridge.set_group(group, package, transitiontime=args.time*10)
+    return
 
-# rooms subcommand
+  lights = [find_light(bridge, x).light_id for x in args.lights.split(',')]
+  bridge.set_light(lights, package, transitiontime=args.time*10)
 
-def room(args):
-	print(config['rooms'])
+# subcommands
 
-def room_set(args):
-	config['rooms'][args.name] = [int(x) for x in args.lights.split(',')]
+def list_cmd(args):
+  bridge = phue.Bridge('192.168.0.101')
+  bridge.connect()
 
-def room_rm(args):
-	del config['rooms'][args.name]
+  lights = bridge.get_light_objects('id')
+  for i, obj in lights.items():
+    print('{: >3} {}'.format(i, obj.name))
+
+def groups_cmd(args):
+  bridge = phue.Bridge('192.168.0.101')
+  bridge.connect()
+
+  groups = bridge.get_group()
+  for i, obj in sorted(groups.items()):
+    print('{: >3} {}'.format(i, obj['name']))
 
 # main parser
 
@@ -83,24 +133,18 @@ parser.add_argument('-s', '--saturation', help='0 - 100', type=int)
 parser.add_argument('-b', '--brightness', help='0 - 100', type=int)
 
 lights_group = parser.add_mutually_exclusive_group()
-lights_group.add_argument('-l', '--lights', help='comma-separated light indices')
-lights_group.add_argument('-r', '--room', choices=list(config['rooms']), default='default')
+lights_group.add_argument('-l', '--lights', default=config['default'], help='comma-separated light indices')
+lights_group.add_argument('-g', '--group', help='a group name')
 
 parser.add_argument('-t', '--time', help='transition time in seconds', default=0.4, type=float)
 parser.add_argument('-o', '--off', help='turn off lights', action='store_true')
+parser.add_argument('-d', '--dim', help='dim the lights', action='store_true')
 
-room_parser = subs.add_parser('room', help='manage rooms')
-room_parser.set_defaults(func=room)
-room_subs = room_parser.add_subparsers()
+lights_parser = subs.add_parser('list', help='list lights')
+lights_parser.set_defaults(func=list_cmd)
 
-room_set_parser = room_subs.add_parser('set', help='add or update a room')
-room_set_parser.add_argument('name', type=str)
-room_set_parser.add_argument('lights')
-room_set_parser.set_defaults(func=room_set)
-
-room_rm_parser = room_subs.add_parser('rm', help='remove a room')
-room_rm_parser.add_argument('name', choices=list(config['rooms']))
-room_rm_parser.set_defaults(func=room_rm)
+lights_parser = subs.add_parser('groups', help='list groups')
+lights_parser.set_defaults(func=groups_cmd)
 
 args = parser.parse_args()
 
